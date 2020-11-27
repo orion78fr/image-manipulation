@@ -96,19 +96,76 @@ public class OperationMorphologie {
 	}
 
 	public static BufferedImage flitreToutOuRien(BufferedImage source) {
+		BufferedImage destination = new BufferedImage(source.getWidth(), source.getHeight() , source.getType());
+		int comptPixObjet = 0;
+		float[] matrixHautGauche = { 1f, 1f, 0f, 1f, 0f, 0f, 0f, 0f, 0f };
+		float[] matrixBasGauche = { 0f, 0f, 0f,	1f, 0f, 0f,1f, 1f, 0f };
+		float[] matrixBasDroite = { 1f, 1f, 0f, 1f, 0f, 0f, 0f, 0f, 0f };
+		float[] matrixHautDroite = { 1f, 1f, 1f,0f, 0f, 1f,	0f, 0f, 0f };
+		
+
+		Kernel khg = new Kernel(3, 3, matrixHautGauche);
+		Kernel khd = new Kernel(3, 3, matrixHautDroite);
+		Kernel kbg = new Kernel(3, 3, matrixBasGauche);
+		Kernel kbd = new Kernel(3, 3, matrixBasDroite);
+		ElementStructurant e_struct_khg = new ElementStructurant(khg, 0, 0);
+		ElementStructurant e_struct_kbg = new ElementStructurant(khg, 0, 2);
+
+		for (int j = 1; j < destination.getHeight() - (kbg.getHeight() - 1) - e_struct_kbg.getOrdoneeOrgRepere(); j++) {
+			for (int i = 1; i < destination.getWidth() - (kbg.getHeight() - 1) - e_struct_kbg.getAbscisseOrgRepere(); i++) {
+				for (int kj = 0; kj < kbg.getHeight(); kj++) {
+					for (int ki = 0; ki < kbg.getWidth(); ki++) {
+						System.out.println("test"+(i+ ki - e_struct_kbg.getAbscisseOrgRepere())+""+(j - e_struct_kbg.getOrdoneeOrgRepere()));
+						if (matrixBasGauche[ki + kj * 3] * source.getRGB(i + ki - e_struct_kbg.getAbscisseOrgRepere(), j + kj - e_struct_kbg.getOrdoneeOrgRepere()+2) == Color.BLACK.getRGB()) {
+							comptPixObjet++;
+							
+						}
+					}
+				}
+				if (comptPixObjet == 3)
+					destination.setRGB(i - 1, j - 1, Color.BLACK.getRGB());
+				else
+					destination.setRGB(i - 1, j - 1, Color.WHITE.getRGB());
+				comptPixObjet = 0;
+			}
+
+		}
+		return destination;
+	}
+	/**
+	 * Tentative de détection de cases remplies.
+	 * @param source
+	 * @return
+	 */
+	public static BufferedImage lecture(BufferedImage source) {
 		BufferedImage destination = new BufferedImage(source.getWidth() - 2, source.getHeight() - 2, source.getType());
 		int comptPixObjet = 0;
-		float[] matrix = { 1f, 1f, 0f, 1f, 0f, 0f, 0f, 0f, 0f };
+		float[] matrixHautGauche = { 1f, 1f, 0f, 1f, 0f, 0f, 0f, 0f, 0f };
+		float[] matrixBasGauche = { 0f, 0f, 0f,	1f, 0f, 0f,1f, 1f, 0f };
+		float[] matrixBasDroite = { 1f, 1f, 0f, 1f, 0f, 0f, 0f, 0f, 0f };
+		float[] matrixHautDroite = { 1f, 1f, 1f,0f, 0f, 1f,	0f, 0f, 0f };
+		
 
-		Kernel k = new Kernel(3, 3, matrix);
-		ElementStructurant e_struct = new ElementStructurant(k, 0, 0);
+		Kernel khg = new Kernel(3, 3, matrixHautGauche);
+		Kernel khd = new Kernel(3, 3, matrixHautDroite);
+		Kernel kbg = new Kernel(3, 3, matrixBasGauche);
+		Kernel kbd = new Kernel(3, 3, matrixBasDroite);
+		ElementStructurant e_struct_khg = new ElementStructurant(khg, 0, 0);
+		ElementStructurant e_struct_kbg = new ElementStructurant(kbg, 0, 2);
+		ElementStructurant e_struct_khd = new ElementStructurant(khd, 2, 0);
+		ElementStructurant e_struct_kbd = new ElementStructurant(kbd, 2, 2);
 
-		for (int j = ((k.getHeight() - 1) - e_struct.getOrdoneeOrgRepere()); j < destination.getHeight() - (k.getHeight() - 1) - e_struct.getOrdoneeOrgRepere(); j++) {
-			for (int i = (k.getWidth() - 1) - e_struct.getAbscisseOrgRepere(); i < destination.getWidth() - (k.getHeight() - 1) - e_struct.getAbscisseOrgRepere(); i++) {
-				for (int kj = 0; kj < k.getHeight(); kj++) {
-					for (int ki = 0; ki < k.getWidth(); ki++) {
-						if (matrix[ki + kj * 3] * source.getRGB(i + ki - e_struct.getAbscisseOrgRepere(), j + kj - e_struct.getOrdoneeOrgRepere()) == Color.BLACK.getRGB()) {
+		for (int j = 1; j < destination.getHeight() - (kbg.getHeight() - 1) - e_struct_kbg.getOrdoneeOrgRepere(); j++) {
+			for (int i = 1; i < destination.getWidth() - (kbg.getHeight() - 1) - e_struct_kbg.getAbscisseOrgRepere(); i++) {
+				for (int kj = 0; kj < kbg.getHeight(); kj++) {
+					for (int ki = 0; ki < kbg.getWidth(); ki++) {
+						System.out.println("test"+(i+ ki - e_struct_kbg.getAbscisseOrgRepere())+""+(j - e_struct_kbg.getOrdoneeOrgRepere()));
+						if (matrixBasGauche[ki + kj * 3] * source.getRGB(i + ki - e_struct_kbg.getAbscisseOrgRepere(), j + kj - e_struct_kbg.getOrdoneeOrgRepere()+2) == Color.BLACK.getRGB() &&
+								matrixHautDroite[ki + kj * 3] * source.getRGB(i + ki - e_struct_khd.getAbscisseOrgRepere(), j + kj - e_struct_khd.getOrdoneeOrgRepere()+2) == Color.BLACK.getRGB() &&
+								matrixHautGauche[ki + kj * 3] * source.getRGB(i + ki - e_struct_khg.getAbscisseOrgRepere(), j + kj - e_struct_khg.getOrdoneeOrgRepere()+2) == Color.BLACK.getRGB() &&
+								matrixBasDroite[ki + kj * 3] * source.getRGB(i + ki - e_struct_kbd.getAbscisseOrgRepere(), j + kj - e_struct_kbd.getOrdoneeOrgRepere()+2) == Color.BLACK.getRGB()) {
 							comptPixObjet++;
+							
 						}
 					}
 				}

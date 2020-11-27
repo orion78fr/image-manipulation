@@ -2,12 +2,15 @@ package projet;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.HeadlessException;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JFileChooser;
@@ -25,12 +28,14 @@ public class MainFrame extends JFrame {
 	private JLabel imagelabel;
 	private BufferedImage baseImage, bufferedImage;
 	private boolean resizing;
+	private Reponses reponses;
 
 	public MainFrame() {
 		this.setTitle("Projet Image - Détection de QCM");
 		this.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
 		resizing = false;
+		reponses = null;
 
 		imagelabel = new JLabel();
 		baseImage = new BufferedImage(500, 500, BufferedImage.TYPE_INT_ARGB);
@@ -47,9 +52,16 @@ public class MainFrame extends JFrame {
 		this.getContentPane().add(scroll);
 		rafraichir();
 		imagelabel.addMouseListener(new MouseSelectListener());
+		MouseListener ml = new MouseAdapter() {
+			
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				//JOptionPane.showMessageDialog(new JFrame(), "position souris : "+e.getPoint().x+" "+e.getPoint().y);
+			}
+		};
+		imagelabel.addMouseListener(ml);
 		this.setSize(800, 600);
 	}
-
 	private class MouseSelectListener extends MouseAdapter {
 		private int xtemp1 = 0;
 		private int ytemp1 = 0;
@@ -128,9 +140,33 @@ public class MainFrame extends JFrame {
 			}
 		});
 		menu.add(item);
-
-		menu.add(new JMenuItem("Sauver... (a venir)"));
-
+		
+		item = new JMenuItem("Sauver...");
+		item.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				try {
+					ImageIO.write(bufferedImage, "png", new File(JOptionPane.showInputDialog("Veuillez rentrez un nom pour l'image. Elle sera enregistrée au format png")+".png"));
+				} catch (HeadlessException e1) {
+					e1.printStackTrace();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		});
+		menu.add(item);
+		
+		item = new JMenuItem("Choisir les réponses au QCM");
+		item.addActionListener(new ActionListener() {
+			
+			@Override
+			public void actionPerformed(ActionEvent arg0) {
+				initReponses();
+			}
+		});
+		menu.add(item);
+		
 		item = new JMenuItem("Quitter");
 		item.addActionListener(new ActionListener() {
 
@@ -421,6 +457,17 @@ public class MainFrame extends JFrame {
 		});
 		menu.add(item);
 
+		item = new JMenuItem("Squelettisation");
+		item.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+
+				bufferedImage = Skeleton.squelettiser(bufferedImage);
+				rafraichir();
+			}
+		});
+		menu.add(item);
 		bar.add(menu);
 		// --------------------------------------
 		menu = new JMenu("Autres");
@@ -449,7 +496,7 @@ public class MainFrame extends JFrame {
 		});
 		menu.add(item);
 
-		item = new JMenuItem("Réduction bruit (variance) 2");
+		/*item = new JMenuItem("Réduction bruit (variance) 2");
 		item.addActionListener(new ActionListener() {
 
 			@Override
@@ -459,9 +506,9 @@ public class MainFrame extends JFrame {
 				rafraichir();
 			}
 		});
-		menu.add(item);
+		menu.add(item);*/
 
-		item = new JMenuItem("Détection de points caractéristiques");
+		item = new JMenuItem("Détection de points caractéristiques (Harris)");
 		item.addActionListener(new ActionListener() {
 
 			@Override
@@ -478,12 +525,102 @@ public class MainFrame extends JFrame {
 			}
 		});
 		menu.add(item);
+		
+		item = new JMenuItem("Préparation de l'image pour la détection");
+		item.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+
+				bufferedImage = UnNoise.run(
+									OperationMorphologie.filtreErosion(
+										OperationMorphologie.filtreDilatation(bufferedImage)), 
+									UnNoise.Methode.VARIANCE, 
+									2, 
+									1.0, 
+									5);
+				
+				int result = InfoImage.getSeuilAutoOtsu(bufferedImage);
+
+				bufferedImage = OperationCouleur.seuillage(bufferedImage, result);
+				
+				rafraichir();
+			}
+		});
+		menu.add(item);
+		
+		item = new JMenuItem("Lecture et Correction");
+		item.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				if(reponses == null){
+					initReponses();
+				}
+				Test t = new Test(bufferedImage, reponses);
+				t.correction();
+				//Iterator<Corner> iter = t.points.iterator();
+				
+				/*while(iter.hasNext()){
+					Corner c =iter.next();
+					ArrayList<Corner> res = t.pointsComparaison(t.points, c);
+					if(res.size()==3){
+						boolean bool = t.verifcase(c, res);
+						System.out.println("case cochee : " +bool);
+					}
+				}*/
+				rafraichir();
+			}
+		});
+		menu.add(item);
 
 		bar.add(menu);
 	}
 
 	private JFrame getMe() {
 		return this;
+	}
+
+	private void initReponses() {
+		int nbQuestion = 0;
+		while (nbQuestion <= 0) {
+			try {
+				nbQuestion = Integer.parseInt(JOptionPane.showInputDialog(getMe(), "Rentrez le nombre de questions de votre QCM"));
+			} catch (Exception ex) {
+			}
+		}
+		int nbReponse = 0;
+		while (nbReponse <= 0) {
+			try {
+				nbReponse = Integer.parseInt(JOptionPane.showInputDialog(getMe(), "Rentrez le nombre de réponses à chaque question de votre QCM"));
+			} catch (Exception ex) {
+			}
+		}
+		StringBuffer exemple = new StringBuffer("(v pour vrai, f pour faux, exemple: ");
+		for(int i=0; i<nbReponse; i++){
+			exemple.append((int)(Math.random()*2) % 2 == 0 ? 'v' : 'f');
+		}
+		exemple.append(")");
+		boolean[][] reponses = new boolean[nbQuestion][];
+		for(int i=0; i<nbQuestion; i++){
+			reponses[i] = new boolean[nbReponse];
+			boolean correct = false;
+			String reponse = null;
+			while(!correct){
+				reponse = JOptionPane.showInputDialog(getMe(), "Rentrez la réponse de la question " + (i+1) + ".\n" + exemple.toString());
+				if(reponse != null){
+					if(reponse.length() == nbReponse){
+						if(reponse.matches("[vf]+")){
+							correct = true;
+						}
+					}
+				}
+			}
+			for(int j=0; j<nbReponse; j++){
+				reponses[i][j] = reponse.charAt(j) == 'v' ? true : false;
+			}
+		}
+		this.reponses = new Reponses(nbQuestion, nbReponse, reponses);
 	}
 
 	private void rafraichir() {
@@ -502,5 +639,4 @@ public class MainFrame extends JFrame {
 	public static void main(String[] args) {
 		new MainFrame().setVisible(true);
 	}
-
 }

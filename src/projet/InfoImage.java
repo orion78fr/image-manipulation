@@ -3,6 +3,8 @@ package projet;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 
+import javax.swing.JFrame;
+
 
 public class InfoImage
 {
@@ -72,6 +74,17 @@ public class InfoImage
 			}
 		}
 		return histo;
+	}
+	public static String representationImage(BufferedImage source){
+		StringBuffer sb = new StringBuffer();
+		for(int i = 0;i<source.getWidth();i++){
+			for(int j=0;j<source.getHeight();j++){
+				if(source.getRGB(i, j) == Color.BLACK.getRGB()) sb.append("1 ");
+				else sb.append("0 ");
+			}
+			sb.append("\n");
+		}
+		return sb.toString();
 	}
 	
 }
